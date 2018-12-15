@@ -1,10 +1,10 @@
 # sectionplottingtools
 Python functions to visualise boreholes and DEMs in section
 Functions are provided to do the following:
-  Load ESRI asc files to pandas dataframes
-  Load borehole coordinate data and lithology (geology) to pandas
-  Load shapefiles to shapely objects
-  Plot borehole data and DEM surface elevations on cross sections
+  * Load ESRI .asc files to pandas dataframes
+  * Load borehole coordinate data and lithology (geology) to pandas
+  * Load shapefiles to shapely objects
+  * Plot borehole data and DEM surface elevations on cross sections
   
 Please read individual function docstrings for more information
 
