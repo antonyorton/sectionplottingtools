@@ -13,5 +13,5 @@ DEMs can be obtained at http://elevation.fsdf.org.au/ for Australia
 Borehole data should be contained in two csv files:
   1. containing the word 'Hole' in the file name and column names 'borehole, x, y, top_rl, EOH_depth, dip, dip_direction'
     provides the coordinate information for each hole
-  2. containing the word 'Geology' in the file name and column names 'borehole,fromDepth,material'
+  2. containing the word 'Geology' in the file name and column names 'borehole, fromDepth, material'
     specifies the top depth of each geological unit
