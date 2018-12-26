@@ -386,6 +386,9 @@ def plot_boreholes_on_section(dfholes, dfgeology, line, title = 'Geotechnical lo
     colour_dict = get_colours(dfgeology,colourmap = colourmap,materials_list = materials_list)
     #print(colour_dict)
     
+    #get text height in map x coordinate units
+    xtextheight = 6.6e-3*line.length
+    
     #Plotting of borholes
     for i in range(len(sholes)):
         bh1 = get_borehole_geology(sholes.iloc[i]['borehole'],dfgeology,sholes)  #extract geology
@@ -398,9 +401,8 @@ def plot_boreholes_on_section(dfholes, dfgeology, line, title = 'Geotechnical lo
             #plot text
             plt.text(0.5*(bh1.iloc[j]['chain']+bh1.iloc[j+1]['chain']),0.5*(bh1.iloc[j]['z']+bh1.iloc[j+1]['z']),str(bh1.iloc[j]['material']))
             
-        plt.text(sholes.iloc[i]['chain'],sholes.iloc[i]['top_rl']+1,str(sholes.iloc[i]['borehole']))
-        plt.text(sholes.iloc[i]['chain'],sholes.iloc[i]['top_rl']+0.35,'o/s '+str(sholes.iloc[i]['offset'])[0:5]+'m')
-        plt.text(sholes.iloc[i]['chain']-3,bh1.iloc[j+1]['z']-0.5,str(sholes.iloc[i]['EOH_depth'])[0:5]+'m')
+        plt.text(sholes.iloc[i]['chain'],sholes.iloc[i]['top_rl']+1,str(sholes.iloc[i]['borehole'])+' (o/s '+str(sholes.iloc[i]['offset'])[0:5]+'m)',rotation = 45,rotation_mode='anchor')
+        plt.text(sholes.iloc[i]['chain']-3,bh1.iloc[-1]['z']-0.5,str(sholes.iloc[i]['EOH_depth'])[0:5]+'m')
     
     plt.xlabel('Chainage (m)')
     plt.ylabel('Elevation (m AHD)')
