@@ -1219,7 +1219,31 @@ def zvals_to_raster_array(xyzgrid,column_id = 'z'):
     zvals = grid_temp[column_id].values.reshape((numy,numx))
     return (zvals,xvals,yvals)
     
-
+def create_shapefile(cs,filename):
+    """Extract polylines from matplotlib contour object and create shapefile
+    input: cs must be of the form cs=plt.contour(x,y,z) (ie a matplotlib contour plot)
+    writes to filename, filename must be form 'myshape.shp'. Make sure filename does not already exist
+    By: Antony Orton"""
+    
+    print('NOTE: must supply a contour/tricontour object and not a contourf/tricontourf')
+    #set schema for shapefile
+    schema={'geometry':'LineString','properties':{'level':'float'}}
+    
+    
+    num_lev=np.shape(cs.levels)[0]
+    
+    
+    d={}
+    with fiona.open(filename,'w','ESRI Shapefile',schema) as layer:
+        count=0
+        for i in range(num_lev):
+             for j in range(np.shape(cs.collections[i].get_paths())[0]):
+                 if cs.collections[i].get_paths()[j].vertices.shape[0]>1: #check more than one point in the contour
+                     d['geometry']=shp.mapping(LineString(cs.collections[i].get_paths()[j].vertices)) #points (LineString) on particular contour line
+                     d['properties']={'level':cs.levels[i]}
+                     layer.write(d)
+                     count+=1
+                     d={}    
         
 #def triangulate_xy_grid(xydata, min_angle = 20):
 #    """"triangulates an unstructured grid of xy coords using J Schewchuck's algorithm.
