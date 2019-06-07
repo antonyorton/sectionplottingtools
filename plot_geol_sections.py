@@ -91,46 +91,53 @@ def read_csv_input_files(file_directory = None):
     return [dfhole,dfgeology]
    
 def shapefile_to_shapely(input_shapefile):
-    """input_shapefile: string shapefile filename
-        returns: list of shapely objects"""
+	"""input_shapefile: string shapefile filename
+		returns: list of shapely objects"""
 
-    file1 = fiona.open(input_shapefile)
-    list1 = []
+	file1 = fiona.open(input_shapefile)
+	list1 = []
 
-    for i in range(len(file1)):
-        ftype = file1[i]['geometry']['type']
-        coords = file1[i]['geometry']['coordinates']
-        if ftype == 'Point':
-            list1.append(shp.Point(coords))
-        elif ftype == 'LineString':
-            list1.append(shp.LineString(coords))
-        elif ftype == 'Polygon':
-            list1.append(shp.LineString(coords))
-        else:
-            'Error: shapefile contains elements which are not a "Point","LineString" or "Polygon"'
+	for i in range(len(file1)):
+		ftype = file1[i]['geometry']['type']
+		coords = file1[i]['geometry']['coordinates']
+		if ftype == 'Point':
+			list1.append(shp.Point(coords))
+		if ftype == 'MultiPoint':
+			list1.append(shp.MultiPoint(coords))
+		elif ftype == 'LineString':
+			list1.append(shp.LineString(coords))
+		elif ftype == 'Polygon':
+			list1.append(shp.LineString(coords))
+		else:
+			'Error: shapefile contains elements which are not a "Point","MultiPoint","LineString" or "Polygon"'
 
-    return list1
+	return list1
 
 def shapely_to_shapefile(input,save_filename):
     
-    """Take an input shapely object (LineString, Polygon, Point) and create and save as a shapefile"""
+	"""Take an input shapely object (LineString, Polygon, Point) and create and save as a shapefile"""
     
-    if not type(input)==shp.LineString:
-        print('Error: Only input shapely Linestrings are supported at present')
-        return
-    
-    line = input
-    
-    schema={'geometry':'LineString','properties':{'level':'float'}}#,'properties':{'level':'float'}}
-    d={}
-    with fiona.open(save_filename,'w','ESRI Shapefile',schema) as layer:
-        d['geometry']=shp.mapping(line) #points (LineString) on particular contour line
-        print(d['geometry'])
-        d['properties']={'level':999.99}
-        #d['properties']={'level':cs.levels[i]}
-        layer.write(d)
+	if not (type(input)==shp.LineString or type(input)==shp.MultiPoint):
+		print('Error: Only input shapely Linestrings or MultiPoint are supported at present')
+		return
+
+	inputdata = input
+
+	if type(input)==shp.LineString:
+		schema={'geometry':'LineString','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+	elif type(input)==shp.MultiPoint:
+		schema={'geometry':'MultiPoint','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+
+
+	d={}
+	with fiona.open(save_filename,'w','ESRI Shapefile',schema) as layer:
+		d['geometry']=shp.mapping(inputdata) #points (LineString) on particular contour line
+		#print(d['geometry'])
+		d['properties']={'level':999.99}
+		#d['properties']={'level':cs.levels[i]}
+		layer.write(d)
         
-    return
+	return
 
 def get_nearby_extents(line,max_offset = 60):
     """Get extents in relation to input section line
