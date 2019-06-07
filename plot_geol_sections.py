@@ -117,25 +117,34 @@ def shapely_to_shapefile(input,save_filename):
     
 	"""Take an input shapely object (LineString, Polygon, Point) and create and save as a shapefile"""
     
-	if not (type(input)==shp.LineString or type(input)==shp.MultiPoint):
+def shapely_to_shapefile(input,save_filename):
+    
+	"""Take an input list of shapely objects (LineString, Polygon, Point) and create and save as a shapefile"""
+
+	if not type(input)==list:
+		inputdata = [input]
+	else:	
+		inputdata = input[:]
+
+	if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint):
 		print('Error: Only input shapely Linestrings or MultiPoint are supported at present')
 		return
-
-	inputdata = input
-
-	if type(input)==shp.LineString:
+		
+	if type(inputdata[0])==shp.LineString:
 		schema={'geometry':'LineString','properties':{'level':'float'}}#,'properties':{'level':'float'}}
-	elif type(input)==shp.MultiPoint:
+	elif type(inputdata[0])==shp.MultiPoint:
 		schema={'geometry':'MultiPoint','properties':{'level':'float'}}#,'properties':{'level':'float'}}
 
 
 	d={}
 	with fiona.open(save_filename,'w','ESRI Shapefile',schema) as layer:
-		d['geometry']=shp.mapping(inputdata) #points (LineString) on particular contour line
-		#print(d['geometry'])
-		d['properties']={'level':999.99}
-		#d['properties']={'level':cs.levels[i]}
-		layer.write(d)
+		for i in range(len(inputdata)):
+			d['geometry']=shp.mapping(inputdata[i]) #points (LineString) on particular contour line
+			#print(d['geometry'])
+			d['properties']={'level':999.99}
+			#d['properties']={'level':cs.levels[i]}
+			layer.write(d)
+			d={}
         
 	return
 
