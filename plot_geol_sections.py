@@ -1225,7 +1225,7 @@ def zvals_to_raster_array(xyzgrid,column_id = 'z'):
     
     zvals = grid_temp[column_id].values.reshape((numy,numx))
     return (zvals,xvals,yvals)
-    
+
   
 def contours_to_shapefile(cs,filename):
 	"""Extract polylines from matplotlib contour object and create shapefile
@@ -1252,10 +1252,9 @@ def contours_to_shapefile(cs,filename):
 					 layer.write(d)
 					 count+=1
 					 d={}      
+	return
  
  
- 
-
 #def triangulate_xy_grid(xydata, min_angle = 20):
 #    """"triangulates an unstructured grid of xy coords using J Schewchuck's algorithm.
 #        input xydata is s dataframe containing 'x','y' columns or an array with first two columns the x and y coordinates
