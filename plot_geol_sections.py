@@ -29,6 +29,8 @@ import matplotlib.path as matpath
 from itertools import islice
 #import triangle
 import matplotlib.tri as trimat
+from pyproj import Proj
+from pyproj import Transformer
 
 
 def read_csv_input_files(file_directory = None):
@@ -107,7 +109,7 @@ def shapefile_to_shapely(input_shapefile):
 		elif ftype == 'LineString':
 			list1.append(shp.LineString(coords))
 		elif ftype == 'Polygon':
-			list1.append(shp.LineString(coords))
+			list1.append(shp.Polygon(coords[0]))
 		else:
 			'Error: shapefile contains elements which are not a "Point","MultiPoint","LineString" or "Polygon"'
 
@@ -1259,7 +1261,18 @@ def contours_to_shapefile(cs,filename):
 					 d={}      
 	return
  
- 
+def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
+
+	"""x,y: arraylike input coordinates """
+	
+	inProj = Proj(init=inprojection)
+	outProj = Proj(init=outprojection)
+	transformer = Transformer.from_proj(inProj,outProj)
+
+	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
+
+
+	
 #def triangulate_xy_grid(xydata, min_angle = 20):
 #    """"triangulates an unstructured grid of xy coords using J Schewchuck's algorithm.
 #        input xydata is s dataframe containing 'x','y' columns or an array with first two columns the x and y coordinates
