@@ -113,9 +113,6 @@ def shapefile_to_shapely(input_shapefile):
 
 	return list1
 
-def shapely_to_shapefile(input,save_filename):
-    
-	"""Take an input shapely object (LineString, Polygon, Point) and create and save as a shapefile"""
     
 def shapely_to_shapefile(input,save_filename):
     
@@ -1235,7 +1232,6 @@ def zvals_to_raster_array(xyzgrid,column_id = 'z'):
     zvals = grid_temp[column_id].values.reshape((numy,numx))
     return (zvals,xvals,yvals)
 
-  
 def contours_to_shapefile(cs,filename):
 	"""Extract polylines from matplotlib contour object and create shapefile
 	input: cs must be of the form cs=plt.contour(x,y,z) (ie a matplotlib contour plot)
