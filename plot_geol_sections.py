@@ -31,7 +31,7 @@ from itertools import islice
 import matplotlib.tri as trimat
 from pyproj import Proj
 from pyproj import Transformer
-
+import descartes as dc
 
 def read_csv_input_files(file_directory = None):
 	""" Read in all csv files in file_directory (or the current directory if = None) with 'hole' or 'geology' in their name
@@ -115,10 +115,7 @@ def shapefile_to_shapely(input_shapefile):
 
 	return list1
 
-def shapely_to_shapefile(input,save_filename):
-	
-	"""Take an input shapely object (LineString, Polygon, Point) and create and save as a shapefile"""
-	
+
 def shapely_to_shapefile(input,save_filename):
 	
 	"""Take an input list of shapely objects (LineString, Polygon, Point) and create and save as a shapefile"""
@@ -886,7 +883,7 @@ def get_xyz_grid_from_DEM(filename, DEM_directory = '',grid_space = 1,fill_value
 		os.chdir(DEM_directory)
 
 	file = open(filename)
-	templist = [line.split(' ') for line in file.readlines()]
+	templist = [line.split() for line in file.readlines()]
 	meta = templist[0:6]   #Meta data
 	
 	#Read meta data
@@ -1183,8 +1180,15 @@ def grid_from_shapely_polygon(poly=[],extents=[],grid_space=100,plot_grid=True):
 	ids=path1.contains_points(grid,radius=0.001)
 	grid=grid[ids]
 	
-
-	print(str(len(grid))+ 'grid points inside convex hull.')
+	#add in points on boundary
+	bdy = conv.boundary
+	intvals = np.linspace(0,bdy.length,int(bdy.length/grid_space))
+	bpts = np.array([np.array(bdy.interpolate(item)) for item in intvals])
+	
+	grid = np.vstack((grid,bpts))
+	
+	
+	print(str(len(grid))+ 'grid points inside or on convex hull.')
 
 	if plot_grid==True:
 		#PLOT GRID
