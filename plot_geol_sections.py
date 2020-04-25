@@ -884,7 +884,7 @@ def get_xyz_grid_from_DEM(filename, DEM_directory = '',grid_space = 1,fill_value
 		os.chdir(DEM_directory)
 
 	file = open(filename)
-	templist = [line.split(' ') for line in file.readlines()]
+	templist = [line.split() for line in file.readlines()]
 	meta = templist[0:6]   #Meta data
 	
 	#Read meta data
