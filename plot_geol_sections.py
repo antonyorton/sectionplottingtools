@@ -125,8 +125,8 @@ def shapely_to_shapefile(input,save_filename):
 	else:	
 		inputdata = input[:]
 
-	if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon):
-		print('Error: Only input shapely Linestrings or MultiPoint are supported at present')
+	if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon or type(inputdata[0])==shp.Point):
+		print('Error: Only input shapely Polygons, Linestrings, Points or MultiPoint are supported at present')
 		return
 		
 	if type(inputdata[0])==shp.LineString:
@@ -135,6 +135,8 @@ def shapely_to_shapefile(input,save_filename):
 		schema={'geometry':'MultiPoint','properties':{'level':'float'}}#,'properties':{'level':'float'}}
 	elif type(inputdata[0])==shp.Polygon:
 		schema={'geometry':'Polygon','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+	elif type(inputdata[0])==shp.Point:
+		schema={'geometry':'Point','properties':{'level':'float'}}#,'properties':{'level':'float'}}
 	
 	d={}
 	with fiona.open(save_filename,'w','ESRI Shapefile',schema) as layer:
