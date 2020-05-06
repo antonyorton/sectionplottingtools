@@ -32,6 +32,7 @@ import matplotlib.tri as trimat
 from pyproj import Proj
 from pyproj import Transformer
 import descartes as dc
+import scipy.spatial
 
 def read_csv_input_files(file_directory = None):
 	""" Read in all csv files in file_directory (or the current directory if = None) with 'hole' or 'geology' in their name
@@ -1270,7 +1271,76 @@ def contours_to_shapefile(cs,filename):
 					 count+=1
 					 d={}	  
 	return
- 
+
+def contours_to_smoothed_polygons(cs, tolerance, point_space, plot=False):
+	"""takes an input matplotlib contour set 'cs'
+		and returns:
+			1. list of smoothed shapely polygons
+			2. list of point arrays along polygon boundaries
+			
+		tolerance = shapely polygon smoothing tolerance
+		point_space = desired point space along line
+	"""
+	
+	temp = cs.collections[0].get_paths()
+	allpolys = []
+	allpoints = []
+	for i in range(len(temp)):
+		
+		#create polygon
+		poly1 = shp.Polygon(temp[i].vertices).simplify(tolerance)
+		allpolys.append(poly1)
+		
+		#create points
+		line1 = shp.LineString(poly1.boundary)
+		interp_dist = np.linspace(0,line1.length,int(line1.length/point_space))
+		pts = [np.array(line1.interpolate(interp_dist[j])) for j in range(len(interp_dist))]
+		pts = np.array(pts)
+		allpoints.append(pts)
+		
+	if plot:
+		for i in range(len(allpolys)):
+			poly1 = allpolys[i]
+			plt.plot(np.array(poly1.boundary)[:,0],np.array(poly1.boundary)[:,1])
+			plt.plot(allpoints[i][:,0],allpoints[i][:,1],'o')
+			
+		plt.axis('equal')
+		plt.grid(True)
+		plt.show()
+	
+	return allpolys, allpoints	
+	
+def remove_close_points(datapoints, min_dist = 2.5):
+
+	"""removes close points from array of datapoints
+		min_dist (float): minimum allowed distance between any two points
+	"""
+	print('removing close points ..')
+	t2 = scipy.spatial.kdtree.KDTree(datapoints)
+	excluded = []
+	
+	for i in range(len(datapoints)):
+		if i not in excluded:
+			nearpoints = t2.query_ball_point(datapoints[i],r = min_dist)
+			if len(nearpoints)>1:
+				for j in range(len(nearpoints)):
+					if not nearpoints[j] == i:
+						excluded.append(nearpoints[j])
+	
+	excluded = np.unique(excluded)
+	
+	included = []
+	for i in range(len(datapoints)):
+		if i not in excluded:
+			included.append(i)
+	
+	print(len(datapoints),' total points')
+	print(len(excluded),' excluded points')
+	print(len(included),' retained points')
+
+	return datapoints[included]
+	
+
 def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
 
 	"""x,y: arraylike input coordinates """
