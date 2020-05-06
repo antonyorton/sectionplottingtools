@@ -1185,33 +1185,36 @@ def grid_from_shapely_polygon(poly=[],extents=[],grid_space=100,plot_grid=True):
 	grid=grid[ids]
 	
 	#add in points on boundary
-	bdy = conv.boundary
-	intvals = np.linspace(0,bdy.length,int(bdy.length/grid_space))
-	bpts = np.array([np.array(bdy.interpolate(item)) for item in intvals])
+	#bdy = conv.boundary
+	#intvals = np.linspace(0,bdy.length,int(bdy.length/grid_space))
+	#bpts = np.array([np.array(bdy.interpolate(item)) for item in intvals])
+	#grid = np.vstack((grid,bpts))
 	
-	grid = np.vstack((grid,bpts))
 	
+	#extract points strictly interior to poly
+	flag = [poly.contains(shp.Point(grid[i])) for i in range(len(grid))]
+	grid = grid[flag]
 	
-	print(str(len(grid))+ 'grid points inside or on convex hull.')
+	print(str(len(grid))+ 'grid points inside or on polygon.')
 
 	if plot_grid==True:
 		#PLOT GRID
 		fig,ax=plt.subplots()
 		patch1=dc.PolygonPatch(poly,facecolor='none',edgecolor='k',linewidth=0.7,zorder=9)
-		patch2=dc.PolygonPatch(conv,facecolor='none',edgecolor='m',linewidth=2,zorder=10)
+		#patch2=dc.PolygonPatch(conv,facecolor='none',edgecolor='m',linewidth=2,zorder=10)
 		plt.plot(grid[:,0],grid[:,1],'.r')
 		ax.add_patch(patch1)
-		ax.add_patch(patch2)
+		#ax.add_patch(patch2)
 		plt.axis('equal')
 		plt.show()
 	
-	extents=conv.bounds
-	xmin=extents[0]
-	ymin=extents[1]
-	xmax=extents[2]
-	ymax=extents[3]
+	#extents=conv.bounds
+	#xmin=extents[0]
+	#ymin=extents[1]
+	#xmax=extents[2]
+	#ymax=extents[3]
 	
-	return (grid,(xmin,ymin,xmax,ymax))
+	return grid #(grid,(xmin,ymin,xmax,ymax))
  
 def zvals_to_raster_array(xyzgrid,column_id = 'z'):
 
