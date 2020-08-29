@@ -31,6 +31,8 @@ from pyproj import Proj
 from pyproj import Transformer
 import descartes as dc
 import shapefile as pyshp
+import scipy.spatial
+
 
 def read_csv_input_files(file_directory = None):
 	""" Read in all csv files in file_directory (or the current directory if = None) with 'hole' or 'geology' in their name
@@ -129,10 +131,11 @@ def shapely_to_shapefile(input,save_filename):
 		inputdata = [input]
 	else:	
 		inputdata = input[:]
-		
-	#if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon):
-	#	print('Error: Only input shapely Polygons, Linestrings or MultiPoints are supported at present')
-	#	return	
+
+	if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon or type(inputdata[0])==shp.Point):
+		print('Error: Only input shapely Polygons, Linestrings, Points or MultiPoint are supported at present')
+		return
+
 	
 	coords = []
 	for i in range(len(inputdata)):
@@ -1088,33 +1091,36 @@ def grid_from_shapely_polygon(poly=[],extents=[],grid_space=100,plot_grid=True):
 	grid=grid[ids]
 	
 	#add in points on boundary
-	bdy = conv.boundary
-	intvals = np.linspace(0,bdy.length,int(bdy.length/grid_space))
-	bpts = np.array([np.array(bdy.interpolate(item)) for item in intvals])
+	#bdy = conv.boundary
+	#intvals = np.linspace(0,bdy.length,int(bdy.length/grid_space))
+	#bpts = np.array([np.array(bdy.interpolate(item)) for item in intvals])
+	#grid = np.vstack((grid,bpts))
 	
-	grid = np.vstack((grid,bpts))
 	
+	#extract points strictly interior to poly
+	flag = [poly.contains(shp.Point(grid[i])) for i in range(len(grid))]
+	grid = grid[flag]
 	
-	print(str(len(grid))+ 'grid points inside or on convex hull.')
+	print(str(len(grid))+ 'grid points inside or on polygon.')
 
 	if plot_grid==True:
 		#PLOT GRID
 		fig,ax=plt.subplots()
 		patch1=dc.PolygonPatch(poly,facecolor='none',edgecolor='k',linewidth=0.7,zorder=9)
-		patch2=dc.PolygonPatch(conv,facecolor='none',edgecolor='m',linewidth=2,zorder=10)
+		#patch2=dc.PolygonPatch(conv,facecolor='none',edgecolor='m',linewidth=2,zorder=10)
 		plt.plot(grid[:,0],grid[:,1],'.r')
 		ax.add_patch(patch1)
-		ax.add_patch(patch2)
+		#ax.add_patch(patch2)
 		plt.axis('equal')
 		plt.show()
 	
-	extents=conv.bounds
-	xmin=extents[0]
-	ymin=extents[1]
-	xmax=extents[2]
-	ymax=extents[3]
+	#extents=conv.bounds
+	#xmin=extents[0]
+	#ymin=extents[1]
+	#xmax=extents[2]
+	#ymax=extents[3]
 	
-	return (grid,(xmin,ymin,xmax,ymax))
+	return grid #(grid,(xmin,ymin,xmax,ymax))
  
 def zvals_to_raster_array(xyzgrid,column_id = 'z'):
 
@@ -1187,7 +1193,76 @@ def contours_to_shapefile(cs,filename):
 			w.line(coords)
 		
 	return
- 
+
+def contours_to_smoothed_polygons(cs, tolerance, point_space, plot=False):
+	"""takes an input matplotlib contour set 'cs'
+		and returns:
+			1. list of smoothed shapely polygons
+			2. list of point arrays along polygon boundaries
+			
+		tolerance = shapely polygon smoothing tolerance
+		point_space = desired point space along line
+	"""
+	
+	temp = cs.collections[0].get_paths()
+	allpolys = []
+	allpoints = []
+	for i in range(len(temp)):
+		
+		#create polygon
+		poly1 = shp.Polygon(temp[i].vertices).simplify(tolerance)
+		allpolys.append(poly1)
+		
+		#create points
+		line1 = shp.LineString(poly1.boundary)
+		interp_dist = np.linspace(0,line1.length,int(line1.length/point_space))
+		pts = [np.array(line1.interpolate(interp_dist[j])) for j in range(len(interp_dist))]
+		pts = np.array(pts)
+		allpoints.append(pts)
+		
+	if plot:
+		for i in range(len(allpolys)):
+			poly1 = allpolys[i]
+			plt.plot(np.array(poly1.boundary)[:,0],np.array(poly1.boundary)[:,1])
+			plt.plot(allpoints[i][:,0],allpoints[i][:,1],'o')
+			
+		plt.axis('equal')
+		plt.grid(True)
+		plt.show()
+	
+	return allpolys, allpoints	
+	
+def remove_close_points(datapoints, min_dist = 2.5):
+
+	"""removes close points from array of datapoints
+		min_dist (float): minimum allowed distance between any two points
+	"""
+	print('removing close points ..')
+	t2 = scipy.spatial.kdtree.KDTree(datapoints)
+	excluded = []
+	
+	for i in range(len(datapoints)):
+		if i not in excluded:
+			nearpoints = t2.query_ball_point(datapoints[i],r = min_dist)
+			if len(nearpoints)>1:
+				for j in range(len(nearpoints)):
+					if not nearpoints[j] == i:
+						excluded.append(nearpoints[j])
+	
+	excluded = np.unique(excluded)
+	
+	included = []
+	for i in range(len(datapoints)):
+		if i not in excluded:
+			included.append(i)
+	
+	print(len(datapoints),' total points')
+	print(len(excluded),' excluded points')
+	print(len(included),' retained points')
+
+	return datapoints[included]
+	
+
 def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
 
 	"""x,y: arraylike input coordinates """
