@@ -1,5 +1,5 @@
 """
-Copyright (c) 2018, Antony Orton.
+Copyright (c) 2020, Antony Orton.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
@@ -18,11 +18,9 @@ import pandas as pd
 import numpy as np
 import os
 import shapely.geometry as shp
-import fiona
 import matplotlib.cm as cmx
 import matplotlib.pyplot as plt
 import re
-import gdal as gd
 import scipy.interpolate as sinterp
 import scipy.ndimage as ndimg
 import matplotlib.path as matpath
@@ -32,6 +30,7 @@ import matplotlib.tri as trimat
 from pyproj import Proj
 from pyproj import Transformer
 import descartes as dc
+import shapefile as pyshp
 
 def read_csv_input_files(file_directory = None):
 	""" Read in all csv files in file_directory (or the current directory if = None) with 'hole' or 'geology' in their name
@@ -91,63 +90,77 @@ def read_csv_input_files(file_directory = None):
 		os.chdir(dir1)
 	
 	return [dfhole,dfgeology]
-   
+	
 def shapefile_to_shapely(input_shapefile):
-	"""input_shapefile: string shapefile filename
-		returns: list of shapely objects"""
-
-	file1 = fiona.open(input_shapefile)
-	list1 = []
-
-	for i in range(len(file1)):
-		ftype = file1[i]['geometry']['type']
-		coords = file1[i]['geometry']['coordinates']
-		if ftype == 'Point':
-			list1.append(shp.Point(coords))
-		if ftype == 'MultiPoint':
-			list1.append(shp.MultiPoint(coords))
-		elif ftype == 'LineString':
+	
+	"""reads a shapfile and converts to a list of shapely objects"""
+	"""NOTE: re-written on 29-8-2020 to remove dependency on Fiona/Gdal"""
+	
+	
+	sf = pyshp.Reader(input_shapefile)
+	ftype = sf.shapeTypeName
+	shapes = sf.shapes()
+	
+	list1=[]
+	for i in range(len(sf)):
+		coords =  shapes[i].points
+		if ftype == 'POINT':
+			list1.append(shp.Point(coords[0]))
+		#NOTE: multipoint not done yet	
+		#if ftype == 'MULTIPOINT':
+		#	list1.append(shp.Point(coords[0]))
+		elif ftype == 'POLYLINE':
 			list1.append(shp.LineString(coords))
-		elif ftype == 'Polygon':
-			list1.append(shp.Polygon(coords[0]))
-		else:
-			'Error: shapefile contains elements which are not a "Point","MultiPoint","LineString" or "Polygon"'
-
+		elif ftype == 'POLYGON':
+			list1.append(shp.Polygon(coords))
+	
 	return list1
 
-
 def shapely_to_shapefile(input,save_filename):
-	
-	"""Take an input list of shapely objects (LineString, Polygon, Point) and create and save as a shapefile"""
+
+	"""Take an input list of shapely objects (LineString, Polygon, Point) and create and save as a shapefile
+		NOTE: re-written on 29-8-2020 to remove dependency on Fiona/Gdal"""
+
+
+	if '.shp' in save_filename:
+		save_filename = save_filename[0:-4]
 
 	if not type(input)==list:
 		inputdata = [input]
 	else:	
 		inputdata = input[:]
-
-	if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon):
-		print('Error: Only input shapely Linestrings or MultiPoint are supported at present')
-		return
 		
-	if type(inputdata[0])==shp.LineString:
-		schema={'geometry':'LineString','properties':{'level':'float'}}#,'properties':{'level':'float'}}
-	elif type(inputdata[0])==shp.MultiPoint:
-		schema={'geometry':'MultiPoint','properties':{'level':'float'}}#,'properties':{'level':'float'}}
-	elif type(inputdata[0])==shp.Polygon:
-		schema={'geometry':'Polygon','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+	#if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon):
+	#	print('Error: Only input shapely Polygons, Linestrings or MultiPoints are supported at present')
+	#	return	
 	
-	d={}
-	with fiona.open(save_filename,'w','ESRI Shapefile',schema) as layer:
+	coords = []
+	for i in range(len(inputdata)):
+		coords.append(shp.mapping(inputdata[i])['coordinates'])
+	
+	w = pyshp.Writer(save_filename)
+	w.field('name', 'C')
+	
+	if type(inputdata[0])==shp.LineString:
 		for i in range(len(inputdata)):
-			d['geometry']=shp.mapping(inputdata[i]) #points (LineString) on particular contour line
-			#print(d['geometry'])
-			d['properties']={'level':999.99}
-			#d['properties']={'level':cs.levels[i]}
-			layer.write(d)
-			d={}
-		
+			w.record('Line'+str(i))
+			w.line(coords[i])
+	elif type(inputdata[0])==shp.Polygon:
+		for i in range(len(inputdata)):
+			w.record('Polygon'+str(i))
+			w.poly(coords[i])
+	elif type(inputdata[0])==shp.Point:
+		for i in range(len(inputdata)):
+			w.record('Point'+str(i))
+			w.point(coords[i][0],coords[i][1])			
+	elif type(inputdata[0])==shp.MultiPoint:
+		for i in range(len(inputdata)):
+			w.record('Multipoint'+str(i))
+			w.multipoint(coords[i])		
+	w.close()
+	
 	return
-
+		
 def get_nearby_extents(line,max_offset = 60):
 	"""Get extents in relation to input section line
 	   Input: line must be a shapely linestring 
@@ -758,114 +771,7 @@ def OLD_find_DEMs_from_points(points,DEM_directory = ''):
 	
 	
 	return np.unique(filename)
-   
-def OLD_get_xyz_grid_from_DEM(filename,DEM_directory = '',grid_space='',grid_xy_offset=[0.1,0.1],fill_value=0.0):
-
-	raise ValueError("Error: old version of xyz_grid_from_dem, do not use")
-
-	"""Outputs an x,y,z dataframe from an .asc format input file, 
-	Input: filename (string) eg 'Elevations.asc'  
-	grid_space (float): desired grid spacing  
-	fill_value (float): value to fill when no_data is encountered
-	grid_xy_offset (list of length 2): x and y offset if desired to use different grid to input DEM 
-	it is good to have a small offset to avoid numerical rounding error and omission/doubling up of raster cell selection
-
-	
-	DEM_directory: string, directory location containing all DEM files
-	set DEM_directory = '' to search current directory
-	WARNING: if copying directory from windows must put as raw string eg DEM_directory = r'C:\..somelocation\..Desktop\..python_codes .... note the r in front of the string """
-	   
-	   
-	if DEM_directory != '':
-		dir1 = os.getcwd()
-		os.chdir(DEM_directory)
-	
-	grid_xy_offset=np.array(grid_xy_offset).astype(float)
-	
-	######   find the nodata value
-	with open(filename,'rt') as in_file:
-		for line in in_file:
-			if 'nodata' in line:
-				line1=line
-				nodata_value=float(line1.split()[1])
-				break
-	
-	#print(line1.split()[0]+' = '+str(nodata_value)+', replaced with '+str(fill_value))
-	######  end
-	
-	data=gd.Open(filename)	  #open file using gdal library
-	
-	rows = data.RasterYSize	 #read number of rows from DEM
-	cols = data.RasterXSize	 #read number of columns from DEM
-	
-
-	
-	############# get georeference info
-	t = data.GetGeoTransform()
-	xOrigin = t[0]
-	yOrigin = t[3]					 
-	xstep = t[1]
-	ystep = t[5]
-	xmax = xOrigin + xstep*cols
-	ymin = yOrigin + ystep*rows
-	
-	
-	
-	
-	########## create grid
-	#grid offset
-	#new_xOrigin = xOrigin + grid_xy_offset[0]	  #offsets to avoid numerical errors if right on the point - creates different answers for coarse DEMs
-	#new_yOrigin = yOrigin + grid_xy_offset[1]	  #trial and error showed x +33 and y = -33 to fit the .ascii files provided most nicely to the Tunnel alignments
-	 
-	# adjust step size if input by user
-	if type(grid_space)!=str:
-		if grid_space>=min(np.abs(xstep),np.abs(ystep)):  #(minimum grid space is set by the input .asc file)
-			new_xstep = grid_space
-			new_ystep = -grid_space
-		else:
-			new_xstep=xstep
-			new_ystep=ystep
-	else:
-		new_xstep=xstep
-		new_ystep=ystep
-	
-	xvals=np.arange(xOrigin,xmax,new_xstep) + grid_xy_offset[0]
-	yvals=np.arange(yOrigin,ymin,new_ystep) + grid_xy_offset[1]
-	xx,yy=np.meshgrid(xvals,yvals)					  #np meshgrid to create coord array
-	coords=np.vstack((xx.flatten(),yy.flatten())).T	 #all grid coordinates in 2 column array
-	
-	print('Extracting '+filename+' : Grid space = '+str(new_xstep)+', '+str(len(yvals))+' rows, '+str(len(xvals))+' columns, '+str(len(yvals)*len(xvals))+' TOTAL points')
-	####   get z-value from raster
-
-	data_array=data.ReadAsArray()   #read data z-values from .ascii file in array format
-	zvals=np.zeros(len(coords))	 #create empty array for z values
-	
-	for i in range(len(coords)):  #for each coordinate extract the z value from the ascii file
-		x=coords[i,0]
-		y=coords[i,1]
-		col_i=int((x-xOrigin)/xstep)	#get column (rounded to avoid numerical error)
-		row_i=int((y-yOrigin)/ystep)	#get row  (rounded to avoid numerical error)
-		
-		if col_i<cols and row_i<rows:
-			zvals[i]=data_array[row_i,col_i]			#read z value
-			if np.abs(zvals[i]/nodata_value - 1.0)<0.00001:
-				zvals[i]=fill_value					 #fill if no data
-		else:
-			zvals[i]=fill_value
-	
-	coords=np.vstack((coords.T,zvals)).T	#join z column to coords array
-	coords=pd.DataFrame(coords)	 #convert to pandas dataframe
-	coords.columns=['x','y','z']
-	
-
-	
-	
-	
-	if DEM_directory != '':
-		os.chdir(dir1)
-		
-	return coords   
-
+ 
 def get_xyz_grid_from_DEM(filename, DEM_directory = '',grid_space = 1,fill_value=0.0):
 
 	"""Outputs an x,y,z dataframe from an .asc format input file, 
@@ -1246,27 +1152,40 @@ def contours_to_shapefile(cs,filename):
 	"""Extract polylines from matplotlib contour object and create shapefile
 	input: cs must be of the form cs=plt.contour(x,y,z) (ie a matplotlib contour plot)
 	writes to filename, filename must be form 'myshape.shp'. Make sure filename does not already exist
-	By: Antony Orton"""
+	"""
+
+	
+	#OLD METHOD USING FIONA - removed on 29-8-2020
+	#set schema for shapefile
+	#schema={'geometry':'LineString','properties':{'level':'float'}}
+	#d={}
+	#with fiona.open(filename,'w','ESRI Shapefile',schema) as layer:
+	#	count=0
+	#	for i in range(num_lev):
+	#		 for j in range(np.shape(cs.collections[i].get_paths())[0]):
+	#			 if cs.collections[i].get_paths()[j].vertices.shape[0]>1: #check more than one point in the contour
+	#				 d['geometry']=shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices)) #points (LineString) on particular contour line
+	#				 d['properties']={'level':cs.levels[i]}
+	#				 layer.write(d)
+	#				 count+=1
+	#				 d={}	
+	
 
 	print('NOTE: Input contours must must be tricontour and NOT tricontourf input')
-	#set schema for shapefile
-	schema={'geometry':'LineString','properties':{'level':'float'}}
-
 
 	num_lev=np.shape(cs.levels)[0]
 
+	if '.shp' in filename:
+		filename = filename[0:-4]
 
-	d={}
-	with fiona.open(filename,'w','ESRI Shapefile',schema) as layer:
-		count=0
-		for i in range(num_lev):
-			 for j in range(np.shape(cs.collections[i].get_paths())[0]):
-				 if cs.collections[i].get_paths()[j].vertices.shape[0]>1: #check more than one point in the contour
-					 d['geometry']=shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices)) #points (LineString) on particular contour line
-					 d['properties']={'level':cs.levels[i]}
-					 layer.write(d)
-					 count+=1
-					 d={}	  
+	w = pyshp.Writer(filename)
+	w.field('level', 'N', decimal=10)
+	for i in range(num_lev):
+		for j in range(np.shape(cs.collections[i].get_paths())[0]):
+			coords = [shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices))['coordinates']]		
+			w.record(cs.levels[i])
+			w.line(coords)
+		
 	return
  
 def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
@@ -1343,10 +1262,62 @@ def split_df_to_intervals(dfdata,x_col, y_col, other_y_col = '', min_interval = 
 	
 	return dataout
 	
-	
-	
-	
 
+#OLD -- def shapefile_to_shapely(input_shapefile):
+#	"""input_shapefile: string shapefile filename
+#		returns: list of shapely objects"""
+#
+#	file1 = fiona.open(input_shapefile)
+#	list1 = []
+#
+#	for i in range(len(file1)):
+#		ftype = file1[i]['geometry']['type']
+#		coords = file1[i]['geometry']['coordinates']
+#		if ftype == 'Point':
+#			list1.append(shp.Point(coords))
+#		if ftype == 'MultiPoint':
+#			list1.append(shp.MultiPoint(coords))
+#		elif ftype == 'LineString':
+#			list1.append(shp.LineString(coords))
+#		elif ftype == 'Polygon':
+#			list1.append(shp.Polygon(coords[0]))
+#		else:
+#			'Error: shapefile contains elements which are not a "Point","MultiPoint","LineString" or "Polygon"'
+#
+#	return list1
+
+
+#OLD -- def shapely_to_shapefile(input,save_filename):
+#	
+#	"""Take an input list of shapely objects (LineString, Polygon, Point) and create and save as a shapefile"""
+#
+#	if not type(input)==list:
+#		inputdata = [input]
+#	else:	
+#		inputdata = input[:]
+#
+#	if not (type(inputdata[0])==shp.LineString or type(inputdata[0])==shp.MultiPoint or type(inputdata[0])==shp.Polygon):
+#		print('Error: Only input shapely Linestrings or MultiPoint are supported at present')
+#		return
+#		
+#	if type(inputdata[0])==shp.LineString:
+#		schema={'geometry':'LineString','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+#	elif type(inputdata[0])==shp.MultiPoint:
+#		schema={'geometry':'MultiPoint','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+#	elif type(inputdata[0])==shp.Polygon:
+#		schema={'geometry':'Polygon','properties':{'level':'float'}}#,'properties':{'level':'float'}}
+#	
+#	d={}
+#	with fiona.open(save_filename,'w','ESRI Shapefile',schema) as layer:
+#		for i in range(len(inputdata)):
+#			d['geometry']=shp.mapping(inputdata[i]) #points (LineString) on particular contour line
+#			#print(d['geometry'])
+#			d['properties']={'level':999.99}
+#			#d['properties']={'level':cs.levels[i]}
+#			layer.write(d)
+#			d={}
+#		
+#	return
 	
 #def triangulate_xy_grid(xydata, min_angle = 20):
 #	""""triangulates an unstructured grid of xy coords using J Schewchuck's algorithm.
