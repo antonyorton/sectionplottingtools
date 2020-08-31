@@ -144,10 +144,12 @@ def shapely_to_shapefile(input,save_filename):
 	w = pyshp.Writer(save_filename)
 	w.field('name', 'C')
 	
+	#NOTE: may still be issues here with w.line, w.poly (data may need to be supplied as list)
 	if type(inputdata[0])==shp.LineString:
 		for i in range(len(inputdata)):
+			print(i)
 			w.record('Line'+str(i))
-			w.line(coords[i])
+			w.line([coords[i]])
 	elif type(inputdata[0])==shp.Polygon:
 		for i in range(len(inputdata)):
 			w.record('Polygon'+str(i))
@@ -159,7 +161,7 @@ def shapely_to_shapefile(input,save_filename):
 	elif type(inputdata[0])==shp.MultiPoint:
 		for i in range(len(inputdata)):
 			w.record('Multipoint'+str(i))
-			w.multipoint(coords[i])		
+			w.multipoint([coords[i]])		
 	w.close()
 	
 	return
