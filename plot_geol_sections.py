@@ -116,6 +116,10 @@ def shapefile_to_shapely(input_shapefile):
 		elif ftype == 'POLYGON':
 			list1.append(shp.Polygon(coords))
 	
+	print('shapfile successfully converted to list of shapely objects')
+	print('shapefile records:')
+	[print(sf.records()[i]) for i in range(len(sf))]
+	
 	return list1
 
 def shapely_to_shapefile(input,save_filename):
