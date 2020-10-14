@@ -1268,7 +1268,6 @@ def remove_close_points(datapoints, min_dist = 2.5):
 
 	return datapoints[included]
 	
-
 def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
 
 	"""x,y: arraylike input coordinates """
@@ -1342,6 +1341,81 @@ def split_df_to_intervals(dfdata,x_col, y_col, other_y_col = '', min_interval = 
 		plt.show()
 	
 	return dataout
+
+def smooth_data_with_rbf(xydata,vals,gridsize=100,function='multiquadric',epsilon=75,smooth=5):
+	
+	""" Smooth a 2D dataset using scipy.interpolate.Rbf
+	
+		xydata: 2D array of coordinates
+		vals: 1D array of values
+		gridsize: Float desired gridsize of output data
+		
+		---- scipy.interpolate.Rbf kwargs -----  (note: function = 'multiquadric',epsilon=75,smooth=5 works ok for groundwater around an open pit) 
+		function : str or callable, optional
+		The radial basis function, based on the radius, r, given by the norm
+		(default is Euclidean distance); the default is 'multiquadric'::
+
+			'multiquadric': sqrt((r/self.epsilon)**2 + 1)
+			'inverse': 1.0/sqrt((r/self.epsilon)**2 + 1)
+			'gaussian': exp(-(r/self.epsilon)**2)
+			'linear': r
+			'cubic': r**3
+			'quintic': r**5
+			'thin_plate': r**2 * log(r)
+
+		If callable, then it must take 2 arguments (self, r). The epsilon
+		parameter will be available as self.epsilon. Other keyword
+		arguments passed in will be available as well.
+
+		epsilon : float, optional
+			Adjustable constant for gaussian or multiquadrics functions
+			- defaults to approximate average distance between nodes (which is
+			a good start).
+		smooth : float, optional
+			Values greater than zero increase the smoothness of the
+			approximation. 0 is for interpolation (default), the function will
+			always go through the nodal points in this case.	
+			
+		Returns: array [gridx,gridy,smoothed_vals]
+		.
+	"""
+	
+	#input data check (raise value errors)
+	if not ((type(xydata) == np.ndarray) and (type(vals) == np.ndarray)):
+		raise ValueError('Error: Input data must be numpy arrays')
+	
+	if not ((xydata.shape[-1] ==2) and (len(vals.shape) == 1)):
+		raise ValueError('Error: xydata must be 2D, vals must be 1D')
+	
+	
+	###### create grid
+	coords = xydata[:,0:2]
+	bdry = shp.MultiPoint(coords[:,0:2]).envelope #bounding rectangle
+	bdrycoords = np.array(bdry.boundary.coords[:])
+	xmin, xmax, ymin, ymax = min(bdrycoords[:,0]), max(bdrycoords[:,0]), min(bdrycoords[:,1]), max(bdrycoords[:,1]) #extents
+	x1,y1 = np.meshgrid(np.linspace(xmin,xmax,int((xmax-xmin)/gridsize)),np.linspace(ymin,ymax,int((ymax-ymin)/gridsize)))
+	coords = np.vstack((x1.flatten(),y1.flatten())).T
+	
+	## extract grid points inside convex hull of input xydata
+	flag = np.zeros(len(coords),dtype=bool)
+	poly1 = shp.MultiPoint(xydata[:,0:2]).convex_hull.buffer(gridsize)
+	for j in range(len(coords)):
+		flag[j] = shp.Point(coords[j]).intersects(poly1)
+	coords = coords[flag]
+	##
+	
+	###### END CREATE GRID
+	
+	# create rbf interpolation of input data
+	print('create Rbf interpolator ..')
+	rbfi = sinterp.Rbf(xydata[:,0],xydata[:,1], vals, function = function, epsilon = epsilon, smooth = smooth)
+	
+	#get smoothed values
+	print('get interpolated values ..')
+	smoothed_vals = rbfi(coords[:,0],coords[:,1])
+	
+	return np.hstack((coords,np.c_[smoothed_vals]))  #return array [x,y,smoothed_vals]
+	
 	
 
 #OLD -- def shapefile_to_shapely(input_shapefile):
