@@ -1272,8 +1272,10 @@ def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'
 
 	"""x,y: arraylike input coordinates """
 	
-	inProj = Proj(init=inprojection)
-	outProj = Proj(init=outprojection)
+	#inProj = Proj(init=inprojection) #2020-11-06 depreciated 
+	#outProj = Proj(init=outprojection) #2020-11-06 ddepreciated
+	inProj = Proj(inprojection)
+	outProj = Proj(outprojection)
 	transformer = Transformer.from_proj(inProj,outProj)
 
 	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
