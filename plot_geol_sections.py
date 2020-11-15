@@ -1194,9 +1194,10 @@ def contours_to_shapefile(cs,filename):
 	w.field('level', 'N', decimal=10)
 	for i in range(num_lev):
 		for j in range(np.shape(cs.collections[i].get_paths())[0]):
-			coords = [shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices))['coordinates']]		
-			w.record(cs.levels[i])
-			w.line(coords)
+			if (cs.collections[i].get_paths()[j].vertices).shape[0] > 1: #need more than one point for a line
+				coords = [shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices))['coordinates']]		
+				w.record(cs.levels[i])
+				w.line(coords)
 		
 	return
 
