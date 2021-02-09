@@ -1269,8 +1269,8 @@ def remove_close_points(datapoints, min_dist = 2.5):
 
 	return datapoints[included]
 	
-def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
-
+def DEPRECIATEDcoord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'):
+	"""depreciated due to changes in pyproj"""
 	"""x,y: arraylike input coordinates """
 	
 	#inProj = Proj(init=inprojection) #2020-11-06 depreciated 
@@ -1281,6 +1281,19 @@ def coord_transform(x,y,inprojection = 'epsg:4326', outprojection = 'epsg:28355'
 
 	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
 
+	
+def coord_transform(x,y,inprojection = '4326', outprojection = '28355'):
+
+	"""x,y: arrays input coordinates """
+	
+	inProj = Proj(inprojection)
+	outProj = Proj(outprojection)
+	transformer = Transformer.from_crs(inprojection,outprojection,always_xy = True)
+
+	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
+	
+	
+	
 def split_df_to_intervals(dfdata,x_col, y_col, other_y_col = '', min_interval = 250, max_range = 25, show_plot = False):
 
 	"""Takes a dataframe and splits into intervals based on the maximum allowed range of y values over an interval
