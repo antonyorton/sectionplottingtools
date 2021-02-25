@@ -1282,7 +1282,7 @@ def DEPRECIATEDcoord_transform(x,y,inprojection = 'epsg:4326', outprojection = '
 	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
 
 	
-def coord_transform(x,y,inprojection = '4326', outprojection = '28355'):
+def coord_transform(x,y,inprojection = 4326, outprojection = 28355):
 
 	"""x,y: arrays input coordinates """
 	
