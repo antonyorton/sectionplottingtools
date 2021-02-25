@@ -815,7 +815,7 @@ def get_xyz_grid_from_DEM(filename, DEM_directory = '',grid_space = 1,fill_value
 	ny = int(meta[1][1])
 	xllcorner = round(float(meta[2][1]),3)
 	yllcorner = round(float(meta[3][1]),3)
-	cellsize = round(float(meta[4][1]),3)
+	cellsize = round(float(meta[4][1]),6)
 	nodata_value = float(meta[5][1])
 	
 	#set coarse_factor
