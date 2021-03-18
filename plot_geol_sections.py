@@ -818,6 +818,9 @@ def get_xyz_grid_from_DEM(filename, DEM_directory = '',grid_space = 1,fill_value
 	cellsize = round(float(meta[4][1]),6)
 	nodata_value = float(meta[5][1])
 	
+	if grid_space == '':
+		grid_space = cellsize
+		
 	#set coarse_factor
 	coarse_factor = max(round(grid_space/cellsize),1)
 	
