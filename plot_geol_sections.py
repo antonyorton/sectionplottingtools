@@ -1436,6 +1436,71 @@ def smooth_data_with_rbf(xydata,vals,gridsize=100,function='multiquadric',epsilo
 	return np.hstack((coords,np.c_[smoothed_vals]))  #return array [x,y,smoothed_vals]
 	
 	
+def dxf_to_csv(filename):
+	""" extracts a dataframe [x,y,z] from a dxf mesh file
+	
+		Input:
+			filename: string name of a dxf file (eg 'example.dxf')
+		Returns:
+			DataFrame [x,y,z]
+	"""
+	
+	print('searching for AcDbFace in file ..')
+	c=0 #look for AcDbFace
+	startface=1e16
+	checkset = range(2,25,2) #checkset to denote and append the lines positioned 2,4,6,.. after 'AcDbFace' is found
+	coords=[]
+	with open(filename, 'r') as f:
+		for line in f:
+			if np.mod(c,1000000)==0:
+				print(c)
+			if line == 'AcDbFace\n':  #TRIGGER text to start extract of coordinates
+				startface=c
+			if c-startface in checkset: #append the lines positioned 2,4,6,.. after 'TRIGGER' is found
+				coords.append(line.strip('\n'))
+			c+=1		
+
+	print('len(coords) =',len(coords))
+	if len(coords) == 0: #look for 3DFACE if AcDbFace not found
+		print('searching for 3DFACE in file ..')
+		c=0 #look for AcDbFace
+		startface=1e16
+		checkset = range(4,27,2) #checkset to denote and append the lines positioned 4,6,8,.. after '3DFACE' is found
+		with open(filename, 'r') as f:
+			for line in f:
+				if np.mod(c,1000000)==0:
+					print(c)
+				if line == '3DFACE\n':  #TRIGGER text to start extract of coordinates
+					startface=c
+				if c-startface in checkset: #append the lines positioned 2,4,6,.. after 'TRIGGER' is found
+					coords.append(line.strip('\n'))
+				c+=1
+	
+	print('len(coords) =',len(coords))
+	if len(coords) == 0: #look for AcDbPolyFaceMeshVertex if 3DFace not found
+		print('searching for AcDbPolyFaceMeshVertex in file ..')
+		c=0 #look for AcDbPolyFaceMeshVertex
+		startface=1e16
+		checkset = range(2,7,2) #checkset to denote and append the lines positioned 4,6,8,.. after 'AcDbPolyFaceMeshVertex' is found
+		with open(filename, 'r') as f:
+			for line in f:
+				if np.mod(c,1000000)==0:
+					print(c)
+				if line == 'AcDbPolyFaceMeshVertex\n':  #TRIGGER text to start extract of coordinates
+					startface=c
+				if c-startface in checkset: #append the lines positioned 2,4,6,.. after 'TRIGGER' is found
+					coords.append(line.strip('\n'))
+				c+=1	
+			
+	
+	xyzvals = np.array(coords).reshape(int(len(coords)/3),3).astype(float)
+
+	xyzDF = pd.DataFrame(xyzvals,columns=['x','y','z'])
+	xyzDF = xyzDF.drop_duplicates()
+
+	return xyzDF	
+
+	
 
 #OLD -- def shapefile_to_shapely(input_shapefile):
 #	"""input_shapefile: string shapefile filename
