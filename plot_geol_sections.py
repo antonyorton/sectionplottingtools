@@ -120,7 +120,6 @@ def shapefile_to_shapely(input_shapefile):
 	print('shapefile records:')
 	[print(sf.records()[i]) for i in range(len(sf))]
 	
-	print(list1)
 	return list1
 
 def shapely_to_shapefile(input,save_filename):
