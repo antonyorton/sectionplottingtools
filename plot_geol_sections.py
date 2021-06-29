@@ -111,7 +111,7 @@ def shapefile_to_shapely(input_shapefile):
 		#NOTE: multipoint not done yet	
 		#if ftype == 'MULTIPOINT':
 		#	list1.append(shp.Point(coords[0]))
-		elif ftype == 'POLYLINE':
+		elif ftype == 'POLYLINE' or ftype == 'POLYLINEZ':
 			list1.append(shp.LineString(coords))
 		elif ftype == 'POLYGON':
 			list1.append(shp.Polygon(coords))
@@ -120,6 +120,7 @@ def shapefile_to_shapely(input_shapefile):
 	print('shapefile records:')
 	[print(sf.records()[i]) for i in range(len(sf))]
 	
+	print(list1)
 	return list1
 
 def shapely_to_shapefile(input,save_filename):
