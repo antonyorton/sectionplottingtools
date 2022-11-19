@@ -99,8 +99,8 @@ def shapefile_to_shapely(input_shapefile, get_fields=False):
         if get_fields is True, returns two items, the first item returned is the shapefile list, the second is the fields list (a list of dictionaries)
         if get_fields is False, returns only the shapefile list
 
-        NOTe: 1. re-written on 29-8-2020 to remove dependency on Fiona/Gdal
-              2. added ability to get_fields on 17-11-2022 with backward compatibility maintained"""
+        NOTe: 1. Re-written on 29-8-2020 to remove dependency on Fiona/Gdal
+              2. Added ability to get_fields on 17-11-2022 with backward compatibility maintained"""
 
     sf = pyshp.Reader(input_shapefile)
     ftype = sf.shapeTypeName
