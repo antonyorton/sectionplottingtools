@@ -93,34 +93,50 @@ def read_csv_input_files(file_directory = None):
 	
 	return [dfhole,dfgeology]
 	
-def shapefile_to_shapely(input_shapefile):
+def shapefile_to_shapely(input_shapefile, get_fields=False):
 	
-	"""reads a shapfile and converts to a list of shapely objects"""
-	"""NOTE: re-written on 29-8-2020 to remove dependency on Fiona/Gdal"""
-	
-	
-	sf = pyshp.Reader(input_shapefile)
-	ftype = sf.shapeTypeName
-	shapes = sf.shapes()
-	
-	list1=[]
-	for i in range(len(sf)):
-		coords =  shapes[i].points
-		if ftype == 'POINT':
-			list1.append(shp.Point(coords[0]))
-		#NOTE: multipoint not done yet	
-		#if ftype == 'MULTIPOINT':
-		#	list1.append(shp.Point(coords[0]))
-		elif ftype == 'POLYLINE' or ftype == 'POLYLINEZ':
-			list1.append(shp.LineString(coords))
-		elif ftype == 'POLYGON':
-			list1.append(shp.Polygon(coords))
-	
-	print('shapfile successfully converted to list of shapely objects')
-	print('shapefile records:')
-	[print(sf.records()[i]) for i in range(len(sf))]
-	
-	return list1
+    """reads a shapfile and converts to a list of shapely objects
+        if get_fields is True, returns two items, the first item returned is the shapefile list, the second is the fields list (a list of dictionaries)
+        if get_fields is False, returns only the shapefile list
+
+        NOTe: 1. re-written on 29-8-2020 to remove dependency on Fiona/Gdal
+              2. added ability to get_fields on 17-11-2022 with backward compatibility maintained"""
+
+    sf = pyshp.Reader(input_shapefile)
+    ftype = sf.shapeTypeName
+    shapes = sf.shapes()
+
+    list1=[]
+    for i in range(len(sf)):
+        coords =  shapes[i].points
+        if ftype == 'POINT':
+            list1.append(shp.Point(coords[0]))
+        #NOTE: multipoint not done yet	
+        #if ftype == 'MULTIPOINT':
+        #	list1.append(shp.Point(coords[0]))
+        elif ftype == 'POLYLINE' or ftype == 'POLYLINEZ':
+            list1.append(shp.LineString(coords))
+        elif ftype == 'POLYGON':
+            list1.append(shp.Polygon(coords))
+
+    if get_fields:
+        fields = sf.fields
+        records = sf.records()
+        fields = [item[0] for item in fields[1::]]
+        listFields = []
+        for i in range(len(sf)):
+            fieldsDict = dict(zip(fields,list(records[i])))
+            listFields.append(fieldsDict)
+
+    print('shapfile successfully converted to list of shapely objects')
+    print('shapefile records:')
+    [print(sf.records()[i]) for i in range(len(sf))]
+
+    #if get_fields .. the first item returned is the shapefile list, the second is the fields list (a list of dictionaries)
+    if get_fields:
+        return [list1,listFields]
+
+    return list1
 
 def shapely_to_shapefile(input,save_filename):
 
