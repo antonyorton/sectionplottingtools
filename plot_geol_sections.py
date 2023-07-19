@@ -1300,7 +1300,6 @@ def DEPRECIATEDcoord_transform(x,y,inprojection = 'epsg:4326', outprojection = '
 
 	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
 
-	
 def coord_transform(x,y,inprojection = 4326, outprojection = 28355):
 
 	"""x,y: arrays input coordinates """
@@ -1310,8 +1309,6 @@ def coord_transform(x,y,inprojection = 4326, outprojection = 28355):
 	transformer = Transformer.from_crs(inprojection,outprojection,always_xy = True)
 
 	return np.array([transformer.transform(x[i],y[i]) for i in range(len(x))])
-	
-	
 	
 def split_df_to_intervals(dfdata,x_col, y_col, other_y_col = '', min_interval = 250, max_range = 25, show_plot = False):
 
@@ -1377,54 +1374,90 @@ def split_df_to_intervals(dfdata,x_col, y_col, other_y_col = '', min_interval = 
 	
 	return dataout
 
-def smooth_data_with_rbf(xydata,vals,gridsize=100,function='multiquadric',epsilon=75,smooth=5):
+
+def smooth_data_with_rbf(xycoords,vals,gridsize=100,function='multiquadric',epsilon=75,smooth=5, neighbours = 25):
+
 	
 	""" Smooth a 2D dataset using scipy.interpolate.Rbf
 	
-		xydata: 2D array of coordinates
+		xycoords: 2D array of coordinates
 		vals: 1D array of values
 		gridsize: Float desired gridsize of output data
 		
-		---- scipy.interpolate.Rbf kwargs -----  (note: function = 'multiquadric',epsilon=75,smooth=5 works ok for groundwater around an open pit) 
-		function : str or callable, optional
-		The radial basis function, based on the radius, r, given by the norm
-		(default is Euclidean distance); the default is 'multiquadric'::
+		---- scipy.interpolate.RBFInterpolator kwargs -----  (note: function = 'multiquadric',epsilon=75,smooth=5 works ok for groundwater around an open pit) 
 
-			'multiquadric': sqrt((r/self.epsilon)**2 + 1)
-			'inverse': 1.0/sqrt((r/self.epsilon)**2 + 1)
-			'gaussian': exp(-(r/self.epsilon)**2)
-			'linear': r
-			'cubic': r**3
-			'quintic': r**5
-			'thin_plate': r**2 * log(r)
+		sinterp.RBFInterpolator(
+			y,
+			d,
+			neighbors=None,
+			smoothing=0.0,
+			kernel='thin_plate_spline',
+			epsilon=None,
+			degree=None)
 
-		If callable, then it must take 2 arguments (self, r). The epsilon
-		parameter will be available as self.epsilon. Other keyword
-		arguments passed in will be available as well.
+		Docstring:
+		Radial basis function (RBF) interpolation in N dimensions.
 
+		Parameters
+		----------
+		y : (P, N) array_like
+				Data point coordinates.
+		d : (P, ...) array_like
+				Data values at `y`.
+		neighbors : int, optional
+				If specified, the value of the interpolant at each evaluation point
+				will be computed using only this many nearest data points. All the data
+				points are used by default.
+		smoothing : float or (P,) array_like, optional
+				Smoothing parameter. The interpolant perfectly fits the data when this
+				is set to 0. For large values, the interpolant approaches a least
+				squares fit of a polynomial with the specified degree. Default is 0.
+		kernel : str, optional
+				Type of RBF. This should be one of
+
+						- 'linear'               : ``-r``
+						- 'thin_plate_spline'    : ``r**2 * log(r)``
+						- 'cubic'                : ``r**3``
+						- 'quintic'              : ``-r**5``
+						- 'multiquadric'         : ``-sqrt(1 + r**2)``
+						- 'inverse_multiquadric' : ``1/sqrt(1 + r**2)``
+						- 'inverse_quadratic'    : ``1/(1 + r**2)``
+						- 'gaussian'             : ``exp(-r**2)``
+
+				Default is 'thin_plate_spline'.
 		epsilon : float, optional
-			Adjustable constant for gaussian or multiquadrics functions
-			- defaults to approximate average distance between nodes (which is
-			a good start).
-		smooth : float, optional
-			Values greater than zero increase the smoothness of the
-			approximation. 0 is for interpolation (default), the function will
-			always go through the nodal points in this case.	
+				Shape parameter that scales the input to the RBF. If `kernel` is
+				'linear', 'thin_plate_spline', 'cubic', or 'quintic', this defaults to
+				1 and can be ignored because it has the same effect as scaling the
+				smoothing parameter. Otherwise, this must be specified.
+		degree : int, optional
+				Degree of the added polynomial. For some RBFs the interpolant may not
+				be well-posed if the polynomial degree is too small. Those RBFs and
+				their corresponding minimum degrees are
+
+						- 'multiquadric'      : 0
+						- 'linear'            : 0
+						- 'thin_plate_spline' : 1
+						- 'cubic'             : 1
+						- 'quintic'           : 2
+
+				The default value is the minimum degree for `kernel` or 0 if there is
+				no minimum degree. Set this to -1 for no added polynomial.
 			
 		Returns: array [gridx,gridy,smoothed_vals]
 		.
 	"""
 	
 	#input data check (raise value errors)
-	if not ((type(xydata) == np.ndarray) and (type(vals) == np.ndarray)):
+	if not ((type(xycoords) == np.ndarray) and (type(vals) == np.ndarray)):
 		raise ValueError('Error: Input data must be numpy arrays')
 	
-	if not ((xydata.shape[-1] ==2) and (len(vals.shape) == 1)):
+	if not ((xycoords.shape[-1] ==2) and (len(vals.shape) == 1)):
 		raise ValueError('Error: xydata must be 2D, vals must be 1D')
 	
 	
 	###### create grid
-	coords = xydata[:,0:2]
+	coords = xycoords[:,0:2]
 	bdry = shp.MultiPoint(coords[:,0:2]).envelope #bounding rectangle
 	bdrycoords = np.array(bdry.boundary.coords[:])
 	xmin, xmax, ymin, ymax = min(bdrycoords[:,0]), max(bdrycoords[:,0]), min(bdrycoords[:,1]), max(bdrycoords[:,1]) #extents
@@ -1433,25 +1466,29 @@ def smooth_data_with_rbf(xydata,vals,gridsize=100,function='multiquadric',epsilo
 	
 	## extract grid points inside convex hull of input xydata
 	flag = np.zeros(len(coords),dtype=bool)
-	poly1 = shp.MultiPoint(xydata[:,0:2]).convex_hull.buffer(gridsize)
+	poly1 = shp.MultiPoint(xycoords[:,0:2]).convex_hull.buffer(gridsize)
 	for j in range(len(coords)):
 		flag[j] = shp.Point(coords[j]).intersects(poly1)
-	coords = coords[flag]
+	coords = np.array(coords[flag])
 	##
 	
 	###### END CREATE GRID
 	
 	# create rbf interpolation of input data
 	print('create Rbf interpolator ..')
-	rbfi = sinterp.Rbf(xydata[:,0],xydata[:,1], vals, function = function, epsilon = epsilon, smooth = smooth)
-	
+	rbfi = sinterp.RBFInterpolator(xycoords[:,0:2], vals, neighbors = neighbours, kernel = function, epsilon = epsilon, smoothing = smooth)
+
 	#get smoothed values
 	print('get interpolated values ..')
-	smoothed_vals = rbfi(coords[:,0],coords[:,1])
+	smoothed_vals = rbfi(coords)
+	
+	print('rbf grid with ',len(smoothed_vals), ' created')
 	
 	return np.hstack((coords,np.c_[smoothed_vals]))  #return array [x,y,smoothed_vals]
-	
-	
+
+
+
+
 def dxf_to_csv(filename):
 	""" extracts a dataframe [x,y,z] from a dxf mesh file
 	
