@@ -1180,45 +1180,40 @@ def zvals_to_raster_array(xyzgrid,column_id = 'z'):
 	return (zvals,xvals,yvals)
 
 def contours_to_shapefile(cs,filename):
-	"""Extract polylines from matplotlib contour object and create shapefile
-	input: cs must be of the form cs=plt.contour(x,y,z) (ie a matplotlib contour plot)
-	writes to filename, filename must be form 'myshape.shp'. Make sure filename does not already exist
-	"""
+  """Extract polylines from matplotlib contour object and create shapefile
+  input: cs must be of the form cs=plt.contour(x,y,z) (ie a matplotlib contour plot)
+  writes to filename, filename must be form 'myshape.shp'. Make sure filename does not already exist
+  """
 
+  print('NOTE: Input contours must must be tricontour and NOT tricontourf input')
+
+  if '.shp' in filename:
+    filename = filename[0:-4]
+
+
+  # Note (5 March 2025): This version does not work for Matplotlib <= 3.8
+  # num_lev=np.shape(cs.levels)[0]
+  # w = pyshp.Writer(filename)
+  # w.field('level', 'N', decimal=10)
+  # for i in range(num_lev):
+  #   for j in range(np.shape(cs.collections[i].get_paths())[0]):
+  #     if (cs.collections[i].get_paths()[j].vertices).shape[0] > 1: #need more than one point for a line
+  #       coords = [shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices))['coordinates']]		
+  #       w.record(cs.levels[i])
+  #       w.line(coords)
 	
-	#OLD METHOD USING FIONA - removed on 29-8-2020
-	#set schema for shapefile
-	#schema={'geometry':'LineString','properties':{'level':'float'}}
-	#d={}
-	#with fiona.open(filename,'w','ESRI Shapefile',schema) as layer:
-	#	count=0
-	#	for i in range(num_lev):
-	#		 for j in range(np.shape(cs.collections[i].get_paths())[0]):
-	#			 if cs.collections[i].get_paths()[j].vertices.shape[0]>1: #check more than one point in the contour
-	#				 d['geometry']=shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices)) #points (LineString) on particular contour line
-	#				 d['properties']={'level':cs.levels[i]}
-	#				 layer.write(d)
-	#				 count+=1
-	#				 d={}	
-	
 
-	print('NOTE: Input contours must must be tricontour and NOT tricontourf input')
+  # Note (6 March 2025): This has now been updated for, and requires, Matplotlib > 3.8
+  w = pyshp.Writer(filename)
+  w.field('level', 'N', decimal=10)
+  for (i, path) in enumerate(cs.get_paths()):
+    segments = path.to_polygons(closed_only = False) #get segments of this path
+    for segment in segments:
+      coords = [shp.mapping(shp.LineString(segment))['coordinates']]		
+      w.record(cs.levels[i])
+      w.line(coords)
 
-	num_lev=np.shape(cs.levels)[0]
-
-	if '.shp' in filename:
-		filename = filename[0:-4]
-
-	w = pyshp.Writer(filename)
-	w.field('level', 'N', decimal=10)
-	for i in range(num_lev):
-		for j in range(np.shape(cs.collections[i].get_paths())[0]):
-			if (cs.collections[i].get_paths()[j].vertices).shape[0] > 1: #need more than one point for a line
-				coords = [shp.mapping(shp.LineString(cs.collections[i].get_paths()[j].vertices))['coordinates']]		
-				w.record(cs.levels[i])
-				w.line(coords)
-		
-	return
+  return
 
 def contours_to_smoothed_polygons(cs, tolerance, point_space, plot=False):
 	"""takes an input matplotlib contour set 'cs'
@@ -1485,8 +1480,6 @@ def smooth_data_with_rbf(xycoords,vals,gridsize=100,function='multiquadric',epsi
 	print('rbf grid with ',len(smoothed_vals), ' created')
 	
 	return np.hstack((coords,np.c_[smoothed_vals]))  #return array [x,y,smoothed_vals]
-
-
 
 
 def dxf_to_csv(filename):
