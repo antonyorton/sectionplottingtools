@@ -1209,10 +1209,11 @@ def contours_to_shapefile(cs,filename):
   for (i, path) in enumerate(cs.get_paths()):
     segments = path.to_polygons(closed_only = False) #get segments of this path
     for segment in segments:
-      coords = [shp.mapping(shp.LineString(segment))['coordinates']]		
-      w.record(cs.levels[i])
-      w.line(coords)
-
+      if len(segment) > 1:
+        coords = [shp.mapping(shp.LineString(segment))['coordinates']]		
+        w.record(cs.levels[i])
+        w.line(coords)
+        
   return
 
 def contours_to_smoothed_polygons(cs, tolerance, point_space, plot=False):
